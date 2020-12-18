@@ -1,0 +1,1 @@
+export const resourceConnectionString: string = "REPLACE_WITH_CONNECTION_STRING";
