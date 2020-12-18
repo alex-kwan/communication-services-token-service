@@ -30,7 +30,7 @@ jobs:
           # Build everything
           npm ci
           npm run build
-          7z a -tzip "${release_name}.zip" "./${release_name}/*"
+          7z a -tzip "${release_name}.zip" "./*"
     - name: Publish
       uses: softprops/action-gh-release@v1
       with:
