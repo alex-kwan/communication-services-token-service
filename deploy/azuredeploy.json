@@ -2,42 +2,47 @@
     "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
     "contentVersion": "1.0.0.0",
     "parameters": {
-        "siteName": {
+        "appName": {
             "type": "string",
-            "defaultValue": "[concat('FuncApp-', uniqueString(resourceGroup().id))]",
             "metadata": {
-                "description": "The name of you Web Site."
+                "description": "The name of you Function App."
             }
         },
-        "storageAccountName": {
-            "type": "String",
-            "defaultValue": "[concat('store', uniqueString(resourceGroup().id))]"
-        },
-        "location": {
+        "packageUrl": {
             "type": "string",
-            "defaultValue": "[resourceGroup().location]",
-            "metadata": {
-                "description": "Location for all resources."
-            }
+            "defaultValue": "https://github.com/alex-kwan/communication-services-token-service/releases/download/d6daef7/Token-d6daef7.zip"
         }
     },
     "variables": {
+        "location": "[resourceGroup().location]",
         "hostingPlanName": "[concat('hpn-', resourceGroup().name)]",
-        "storageAccountid": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+        "commsName": "[concat('CommunicationServices-', parameters('appName'))]",
+        "storageAccountid": "[concat('storageAccounts-', parameters('appName'))]"
     },
     "resources": [
         {
+            "name": "[variables('commsName')]",
+            "type": "Microsoft.Communication/communicationServices",
+            "apiVersion": "2020-08-20-preview",
+            "location": "global",
+            "tags": {},
+            "properties": {
+            "dataLocation": "United States"
+            }
+        },
+        {
             "type": "Microsoft.Web/sites",
             "apiVersion": "2019-08-01",
-            "name": "[parameters('siteName')]",
+            "name": "[parameters('appName')]",
             "kind": "functionapp,linux",
-            "location": "[parameters('location')]",
+            "location": "[variables('location')]",
             "dependsOn": [
                 "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
-                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
+                "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountid'))]",
+                "[resourceId('Microsoft.Communication/communicationServices', variables('commsName'))]"
             ],
             "properties": {
-                "name": "[parameters('siteName')]",
+                "name": "[parameters('appName')]",
                 "siteConfig": {
                     "appSettings": [
                         {
@@ -50,19 +55,37 @@
                         },
                         {
                             "name": "AzureWebJobsStorage",
-                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', parameters('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountid'),'2019-06-01').keys[0].value)]"
+                            "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountid'), ';AccountKey=', listKeys(variables('storageAccountid'),'2019-06-01').keys[0].value)]"
+                        },
+                        {
+                            "name": "ResourceConnectionString",
+                            "value": "[listkeys(variables('commsName'), '2020-08-20-preview' ).primaryConnectionString]"
                         }
                     ]
                 },
                 "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
                 "clientAffinityEnabled": false
+            },
+            "resources": [
+        {
+            "name": "MSDeploy",
+            "type": "extensions",
+            "location": "[resourceGroup().location]",
+            "apiVersion": "2015-08-01",
+            "dependsOn": [
+              "[resourceId('Microsoft.Web/sites', parameters('appName'))]",
+            ],
+            "properties": {
+              "packageUri": "[parameters('packageUrl')]"
             }
+          }
+            ]
         },
         {
             "type": "Microsoft.Web/serverfarms",
             "apiVersion": "2019-08-01",
             "name": "[variables('hostingPlanName')]",
-            "location": "[parameters('location')]",
+            "location": "[variables('location')]",
             "kind": "linux",
             "properties": {
                 "reserved": true
@@ -74,9 +97,9 @@
         },
         {
             "type": "Microsoft.Storage/storageAccounts",
-            "name": "[parameters('storageAccountName')]",
+            "name": "[variables('storageAccountid')]",
             "apiVersion": "2019-06-01",
-            "location": "[parameters('location')]",
+            "location": "[variables('location')]",
             "kind": "StorageV2",
             "sku": {
                 "name": "Standard_LRS"
