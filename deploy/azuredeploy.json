@@ -17,7 +17,7 @@
         "location": "[resourceGroup().location]",
         "hostingPlanName": "[concat('hpn-', resourceGroup().name)]",
         "commsName": "[concat('CommunicationServices-', parameters('appName'))]",
-        "storageAccountid": "[concat('storageAccounts-', parameters('appName'))]"
+        "storageAccountid": "[concat('storageaccounts', toLower(parameters('appName')))]"
     },
     "resources": [
         {
@@ -73,7 +73,10 @@
                     "location": "[resourceGroup().location]",
                     "apiVersion": "2015-08-01",
                     "dependsOn": [
-                        "[resourceId('Microsoft.Web/sites', parameters('appName'))]"
+                        "[resourceId('Microsoft.Web/sites', parameters('appName'))]",
+                        "[resourceId('Microsoft.Web/serverfarms', variables('hostingPlanName'))]",
+                        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountid'))]",
+                        "[resourceId('Microsoft.Communication/communicationServices', variables('commsName'))]"
                     ],
                     "properties": {
                     "packageUri": "[parameters('packageUrl')]"
